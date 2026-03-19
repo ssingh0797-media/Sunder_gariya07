@@ -1,0 +1,229 @@
+/* ══════════════════════════════════════════════════════════════
+   SUNDER GARIYA — PORTFOLIO SCRIPT
+   ══════════════════════════════════════════════════════════════ */
+
+'use strict';
+
+/* ── 1. THEME TOGGLE ────────────────────────────────────────── */
+const themeToggle = document.getElementById('themeToggle');
+const themeIcon   = themeToggle.querySelector('.theme-icon');
+const html        = document.documentElement;
+
+// Restore saved preference
+const savedTheme = localStorage.getItem('sg-theme') || 'light';
+html.setAttribute('data-theme', savedTheme);
+themeIcon.textContent = savedTheme === 'dark' ? '☽' : '☀';
+
+themeToggle.addEventListener('click', () => {
+  const current = html.getAttribute('data-theme');
+  const next    = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  themeIcon.textContent = next === 'dark' ? '☽' : '☀';
+  localStorage.setItem('sg-theme', next);
+});
+
+/* ── 2. STICKY NAVBAR ──────────────────────────────────────── */
+const navbar = document.getElementById('navbar');
+
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 40);
+}, { passive: true });
+
+/* ── 3. SMOOTH SCROLLING + ACTIVE NAV LINKS ────────────────── */
+const navLinks = document.querySelectorAll('.nav-link, .mob-link, .footer-nav a');
+
+// Sections to observe for active state
+const sections = document.querySelectorAll('section[id]');
+
+const sectionObserver = new IntersectionObserver(
+  (entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.getAttribute('id');
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === `#${id}`) {
+            link.classList.add('active');
+          }
+        });
+      }
+    });
+  },
+  { rootMargin: '-40% 0px -55% 0px' }
+);
+
+sections.forEach(sec => sectionObserver.observe(sec));
+
+/* ── 4. MOBILE HAMBURGER ───────────────────────────────────── */
+const hamburger = document.getElementById('hamburger');
+const mobileNav = document.getElementById('mobileNav');
+
+hamburger.addEventListener('click', () => {
+  const isOpen = mobileNav.classList.toggle('open');
+  hamburger.classList.toggle('open', isOpen);
+  document.body.style.overflow = isOpen ? 'hidden' : '';
+});
+
+// Close on link click
+document.querySelectorAll('.mob-link').forEach(link => {
+  link.addEventListener('click', () => {
+    mobileNav.classList.remove('open');
+    hamburger.classList.remove('open');
+    document.body.style.overflow = '';
+  });
+});
+
+/* ── 5. SCROLL REVEAL ANIMATIONS ───────────────────────────── */
+const revealEls = document.querySelectorAll('.reveal');
+
+const revealObserver = new IntersectionObserver(
+  (entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        // Unobserve after reveal for performance
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  },
+  { threshold: 0.12, rootMargin: '0px 0px -40px 0px' }
+);
+
+revealEls.forEach(el => revealObserver.observe(el));
+
+/* ── 6. PORTFOLIO FILTER ────────────────────────────────────── */
+const filterBtns  = document.querySelectorAll('.filter-btn');
+const portfolioCards = document.querySelectorAll('.portfolio-card');
+
+filterBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    // Update active button
+    filterBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const filter = btn.getAttribute('data-filter');
+
+    portfolioCards.forEach(card => {
+      const category = card.getAttribute('data-category');
+      if (filter === 'all' || category === filter) {
+        card.classList.remove('hidden');
+        // Re-trigger reveal
+        card.classList.remove('visible');
+        setTimeout(() => card.classList.add('visible'), 20);
+      } else {
+        card.classList.add('hidden');
+      }
+    });
+  });
+});
+
+/* ── 7. TESTIMONIALS SLIDER ─────────────────────────────────── */
+const slides     = document.querySelectorAll('.slide');
+const dotsWrap   = document.getElementById('sliderDots');
+const prevBtn    = document.getElementById('prevBtn');
+const nextBtn    = document.getElementById('nextBtn');
+let   current    = 0;
+let   autoTimer  = null;
+
+// Build dots
+slides.forEach((_, i) => {
+  const dot = document.createElement('button');
+  dot.className = 'dot-btn' + (i === 0 ? ' active' : '');
+  dot.setAttribute('aria-label', `Go to slide ${i + 1}`);
+  dot.addEventListener('click', () => goTo(i));
+  dotsWrap.appendChild(dot);
+});
+
+function goTo(index) {
+  slides[current].classList.remove('active');
+  dotsWrap.children[current].classList.remove('active');
+  current = (index + slides.length) % slides.length;
+  slides[current].classList.add('active');
+  dotsWrap.children[current].classList.add('active');
+}
+
+function next() { goTo(current + 1); }
+function prev() { goTo(current - 1); }
+
+prevBtn.addEventListener('click', () => { prev(); resetAuto(); });
+nextBtn.addEventListener('click', () => { next(); resetAuto(); });
+
+// Make first slide active
+slides[0].classList.add('active');
+
+// Auto-advance every 5 s
+function startAuto() { autoTimer = setInterval(next, 5000); }
+function resetAuto()  { clearInterval(autoTimer); startAuto(); }
+startAuto();
+
+// Pause on hover
+const sliderWrap = document.querySelector('.slider-wrapper');
+sliderWrap.addEventListener('mouseenter', () => clearInterval(autoTimer));
+sliderWrap.addEventListener('mouseleave', startAuto);
+
+/* ── 8. COPY EMAIL TO CLIPBOARD ─────────────────────────────── */
+const copyBtn      = document.getElementById('copyBtn');
+const copyFeedback = document.getElementById('copyFeedback');
+const emailValue   = document.getElementById('emailValue');
+
+copyBtn.addEventListener('click', async () => {
+  const email = emailValue.textContent.trim();
+  try {
+    await navigator.clipboard.writeText(email);
+  } catch {
+    // Fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = email;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  copyFeedback.classList.add('show');
+  setTimeout(() => copyFeedback.classList.remove('show'), 2200);
+});
+
+/* ── 9. CONTACT FORM SUBMISSION ─────────────────────────────── */
+const contactForm    = document.getElementById('contactForm');
+const formSuccess    = document.getElementById('formSuccess');
+
+contactForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+
+  // Simple validation
+  const name    = contactForm.name.value.trim();
+  const email   = contactForm.email.value.trim();
+  const message = contactForm.message.value.trim();
+
+  if (!name || !email || !message) return;
+
+  // Simulate submission (replace with your backend / form service)
+  const submitBtn = contactForm.querySelector('button[type="submit"]');
+  submitBtn.textContent = 'Sending…';
+  submitBtn.disabled = true;
+
+  setTimeout(() => {
+    contactForm.reset();
+    submitBtn.textContent = 'Send Message →';
+    submitBtn.disabled = false;
+    formSuccess.classList.add('show');
+    setTimeout(() => formSuccess.classList.remove('show'), 4500);
+  }, 1400);
+});
+
+/* ── 10. HERO PARALLAX (subtle) ─────────────────────────────── */
+const heroBgText = document.querySelector('.hero-bg-text');
+if (heroBgText) {
+  window.addEventListener('scroll', () => {
+    const y = window.scrollY;
+    heroBgText.style.transform = `translate(-50%, calc(-50% + ${y * 0.25}px))`;
+  }, { passive: true });
+}
+
+/* ── 11. SCROLL-TO-TOP ON LOGO CLICK ──────────────────────────── */
+document.querySelectorAll('.nav-logo').forEach(logo => {
+  logo.addEventListener('click', (e) => {
+    e.preventDefault();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+});
